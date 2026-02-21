@@ -96,18 +96,6 @@ Endpoint principal del asistente.
 ### `POST /api/gemini`
 Envía un prompt libre directamente al modelo de IA.
 
-### `GET /api/test/flights`
-Prueba de búsqueda de vuelos directamente contra SerpAPI.
-```
-GET /api/test/flights?origin=BOG&destination=MIA&date=2026-04-15
-```
-
-### `GET /api/test/airport-code`
-Prueba el mapeador de códigos IATA.
-```
-GET /api/test/airport-code?city=Medellín
-```
-
 ---
 
 ## 🔄 Flujo de una petición
