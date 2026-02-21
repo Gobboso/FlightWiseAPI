@@ -1,0 +1,236 @@
+====================================================
+  FLIGHTWISE API — PRESENTACIÓN EJECUTIVA
+====================================================
+
+----------------------------------------------------
+¿QUÉ ES FLIGHTWISE?
+----------------------------------------------------
+FlightWise es una API REST inteligente construida
+sobre ASP.NET Core (.NET 8) que actúa como cerebro
+de un asistente de viajes conversacional potenciado
+por inteligencia artificial.
+
+A diferencia de los buscadores de vuelos
+tradicionales donde el usuario debe rellenar
+formularios, FlightWise permite una interacción
+completamente natural:
+
+  Usuario: "Quiero viajar de Bogotá a Madrid
+            el próximo mes, ida y vuelta"
+
+  FlightWise: "Encontré estas opciones para ti:
+               Avianca: $620 USD / $2.400.000 COP
+               | 10:30 | 10h 20m | 1 escala ..."
+
+El sistema entiende el contexto, hace las preguntas
+correctas cuando falta información y entrega
+resultados de vuelos reales en segundos.
+
+----------------------------------------------------
+PROPUESTA DE VALOR
+----------------------------------------------------
+→ Experiencia conversacional: el usuario no aprende
+  a usar la app, la app aprende a entender al usuario
+
+→ Datos reales: no es una simulación, los vuelos
+  provienen de Google Flights en tiempo real a
+  través de SerpAPI
+
+→ Doble moneda: precios en USD y COP simultáneamente,
+  pensado para el mercado latinoamericano
+
+→ Más que vuelos: el asistente también responde
+  preguntas sobre qué hacer en el destino, con
+  recomendaciones de lugares, gastronomía y consejos
+
+→ Arquitectura lista para escalar: cada componente
+  está desacoplado y puede reemplazarse o extenderse
+  sin afectar el resto del sistema
+
+----------------------------------------------------
+TECNOLOGÍAS
+----------------------------------------------------
+- ASP.NET Core (.NET 8) + C# 12
+    Base sólida, multiplataforma y de alto rendimiento
+
+- Google Gemini AI (gemini-3-flash-preview)
+    Modelo de lenguaje de última generación para
+    comprensión y generación de texto natural
+
+- SerpAPI — Google Flights
+    Acceso a datos reales de vuelos en tiempo real
+    con precios, horarios y disponibilidad
+
+- React (frontend desacoplado)
+    Interfaz conversacional independiente del backend
+
+- Swagger / OpenAPI
+    Documentación interactiva lista para integradores
+
+----------------------------------------------------
+ARQUITECTURA
+----------------------------------------------------
+El proyecto sigue una arquitectura de capas limpia
+donde cada componente tiene una única responsabilidad:
+
+  [Frontend React]
+        ↓ HTTP
+  [ChatController]       ← punto de entrada único
+        ↓
+  [GeminiAIService]      ← inteligencia y lenguaje
+  [FlightsService]       ← datos de vuelos reales
+        ↓
+  [ChatMemory]           ← contexto conversacional
+  [AirportMapper]        ← resolución de aeropuertos
+        ↓
+  [Gemini API] [SerpAPI] ← servicios externos
+
+Esta separación permite sustituir cualquier pieza,
+por ejemplo cambiar Gemini por otro modelo de IA
+o SerpAPI por otra fuente de vuelos, sin tocar
+el resto del sistema.
+
+----------------------------------------------------
+APIs EXTERNAS
+----------------------------------------------------
+GOOGLE GEMINI AI
+  Motor de inteligencia artificial de Google.
+  Recibe texto en lenguaje natural y responde con
+  texto o JSON estructurado según el prompt.
+  Se usa para clasificar intenciones, extraer datos
+  de viaje, resolver nombres de ciudad a código IATA
+  y generar las respuestas que ve el usuario.
+
+SERPAPI — Google Flights
+  Servicio que actúa como intermediario para obtener
+  resultados de Google Flights sin necesidad de
+  hacer scraping. Recibe parámetros de búsqueda
+  (origen, destino, fecha, moneda) y devuelve un
+  JSON con vuelos reales, precios, horarios,
+  aerolíneas y un enlace directo a Google Flights.
+  Se consulta dos veces por búsqueda: una en USD
+  y otra en COP para mostrar ambas monedas.
+
+----------------------------------------------------
+FLUJO TÉCNICO DE UNA PETICIÓN
+----------------------------------------------------
+1. El frontend envía el mensaje con un sessionId
+   que identifica la conversación del usuario.
+
+2. El sistema recupera el historial reciente de
+   esa sesión para dar contexto a la IA.
+
+3. En UNA sola llamada a Gemini, el sistema:
+   · Clasifica la intención (vuelos, actividades
+     o conversación general)
+   · Extrae datos estructurados (origen, destino,
+     fecha, adultos)
+   · Genera la respuesta directamente si es chat
+     o si faltan datos para buscar vuelos
+
+4a. SI ES BÚSQUEDA DE VUELOS (ask_flights):
+   · Si faltan datos, se retorna la pregunta
+     generada por la IA sin llamadas extra
+   · Se resuelven los códigos IATA con un
+     diccionario local (+70 ciudades) y la IA
+     como fallback, ambos en paralelo
+   · Se consulta SerpAPI en paralelo en USD y COP
+   · Gemini formatea la lista de vuelos
+   · Se adjunta el enlace directo a Google Flights
+
+4b. SI ES CONSULTA DE ACTIVIDADES (ask_activities):
+   · Si la ciudad fue detectada, se hace 1 llamada
+     a Gemini para generar lugares turísticos,
+     recomendaciones gastronómicas y un consejo
+     práctico del destino con formato estructurado
+   · Si no se detectó la ciudad, la respuesta
+     preguntando cuál ciudad ya viene incluida
+     desde el paso 3, sin llamada extra
+
+4c. SI ES CONVERSACIÓN GENERAL (chat):
+   · La respuesta ya viene embebida en el JSON
+     del paso 3, no se realiza ninguna llamada
+     adicional a la API
+
+5. La respuesta se guarda en el historial de la
+   sesión y se retorna al frontend con el sessionId,
+   el texto, el tipo de intent y si hubo búsqueda
+   real de vuelos.
+
+----------------------------------------------------
+DECISIONES TÉCNICAS DESTACABLES
+----------------------------------------------------
+OPTIMIZACIÓN DE LLAMADAS A LA IA
+  El sistema opera bajo el plan gratuito de Gemini
+  (5 RPM, 20 RPD). Para maximizar las interacciones
+  posibles dentro de ese límite, se fusionó la
+  detección de intención con la generación de
+  respuesta en una única llamada, pasando de 2
+  llamadas a 1 en todos los mensajes de chat.
+  Resultado: el doble de conversaciones por día
+  con los mismos recursos.
+
+CONTROL DE TOKENS EN MODELOS DE RAZONAMIENTO
+  Gemini 3 Flash Preview es un thinking model:
+  antes de responder "piensa" internamente, y esos
+  tokens de razonamiento consumen el presupuesto
+  de salida. Se implementó thinkingBudget: 0 en
+  las llamadas deterministas (clasificar intenciones,
+  formatear vuelos), desactivando el razonamiento
+  donde no aporta valor y reservando todos los
+  tokens para la respuesta útil.
+
+PARALELISMO REAL CON TASK.WHENALL
+  La resolución de dos códigos IATA y la búsqueda
+  de vuelos en dos monedas se ejecutan en paralelo,
+  reduciendo el tiempo de espera a la duración de
+  la llamada más lenta en lugar de la suma de todas.
+
+RESILIENCIA ANTE FALLOS
+  Retry automático con backoff exponencial (2s, 4s,
+  6s) ante errores temporales de la API de Gemini,
+  con manejo diferenciado para errores de red,
+  timeout, JSON inválido y errores inesperados.
+
+FALLBACK EN CASCADA PARA IATA
+  Diccionario local instantáneo y gratuito como
+  primera opción. La IA solo se consulta cuando
+  la ciudad no está en el diccionario, minimizando
+  el consumo de la API al máximo posible.
+
+PROTECCIÓN DEL SERVIDOR
+  Rate limiting nativo de ASP.NET Core con
+  FixedWindowLimiter (3 req / 10 seg) en el
+  pipeline del servidor, sin dependencias externas.
+
+----------------------------------------------------
+POTENCIAL DE CRECIMIENTO
+----------------------------------------------------
+La arquitectura actual es una base sólida sobre
+la cual se pueden construir funcionalidades de
+alto valor comercial:
+
+→ Autenticación y perfiles de usuario
+→ Historial persistente en base de datos
+→ Notificaciones de cambios en precios
+→ Integración con pasarelas de pago
+→ Soporte multiidioma
+→ Módulo de hoteles y experiencias
+→ Dashboard analítico de búsquedas
+→ Despliegue en Azure o AWS con auto-scaling
+
+
+
+----------------------------------------------------
+RESUMEN EJECUTIVO
+----------------------------------------------------
+FlightWise demuestra que es posible construir un
+asistente de IA funcional, eficiente y escalable
+con tecnología moderna y restricciones de recursos
+reales. Cada decisión técnica estuvo guiada por
+un objetivo concreto: hacer más con menos llamadas,
+responder más rápido y fallar de forma controlada.
+
+Es una base tecnológica lista para convertirse
+en un producto comercial completo.
+====================================================
