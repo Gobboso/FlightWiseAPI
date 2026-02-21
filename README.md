@@ -34,7 +34,6 @@ El sistema detecta la intención, extrae los datos, resuelve los aeropuertos, bu
 | ASP.NET Core (.NET 8) + C# 12 | Framework principal |
 | Google Gemini AI (`gemini-3-flash-preview`) | Procesamiento de lenguaje natural |
 | SerpAPI — Google Flights | Datos de vuelos en tiempo real |
-| React (proyecto separado) | Frontend conversacional |
 | Swagger / OpenAPI | Documentación interactiva |
 
 ---
@@ -45,8 +44,7 @@ El sistema detecta la intención, extrae los datos, resuelve los aeropuertos, bu
 FlightWiseAPI/
 ├── Controllers/
 │   ├── ChatController.cs        # POST /api/chat — endpoint principal
-│   ├── GeminiAIController.cs    # POST /api/gemini — consulta directa a la IA
-│   └── TestController.cs        # GET /api/test/* — endpoints de prueba
+│   └── GeminiAIController.cs    # POST /api/gemini — consulta directa a la IA
 ├── Services/
 │   ├── GeminiAIService.cs       # Integración con Google Gemini AI
 │   └── FlightsService.cs        # Integración con SerpAPI (Google Flights)
@@ -95,18 +93,6 @@ Endpoint principal del asistente.
 
 ### `POST /api/gemini`
 Envía un prompt libre directamente al modelo de IA.
-
-### `GET /api/test/flights`
-Prueba de búsqueda de vuelos directamente contra SerpAPI.
-```
-GET /api/test/flights?origin=BOG&destination=MIA&date=2026-04-15
-```
-
-### `GET /api/test/airport-code`
-Prueba el mapeador de códigos IATA.
-```
-GET /api/test/airport-code?city=Medellín
-```
 
 ---
 
@@ -159,7 +145,7 @@ POST /api/chat
 
 | Método | Descripción |
 |---|---|
-| `AddMessage(sessionId, role, message)` | Añade un mensaje al historial de la sesión |
+| `AddMessage(sessionId, role, message)` | Añade un mensaje al historial de la sesión | 
 | `GetFormattedHistory(sessionId, maxMessages)` | Devuelve los últimos N mensajes como texto |
 | `ClearSession(sessionId)` | Limpia el historial de una sesión |
 
